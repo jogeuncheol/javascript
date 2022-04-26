@@ -1,0 +1,171 @@
+﻿<html>
+<head>
+    <title>60sec Adventure</title>
+    <style>
+        canvas {
+            border: 1px dotted red;	/* 캔버스에 경계선을 그려준다. */
+            background-color: #fcff00;	/* 캔버스의 배경색을 지정한다. */
+        }
+    </style>
+    <script src="http://code.jquery.com/jquery-3.6.0.js"></script>
+    <script>
+        var context;					/* 컨텍스트 객체*/
+        var score = 0;				    /* 점수 */
+        var time = 0;                   /* 게임 시간 */
+        var image = new Image();		/* 이미지 객체 생성 */
+        image.src = "bg_image1.png";		    /* 배경 이미지 */
+        var leafimage = new Image();                  /* 낙엽 이미지 */
+	leafimage.src = "leaf.png";
+        var leafcount;                  /* 낙엽 개수 */
+        var draw_timer;					/* 타이머 객체 변수 */
+        var Leafs = [];                 /* 낙엽 배열 */
+        var player = new Image;         /* 플레이어 이미지 객체 */
+        player.src = "player1.png";     /* 플레이어 이미지 */
+        var player_x;                   /* 플레이어 x 좌표 */
+        var player_y;                   /* 플레이어 y 좌표 */
+        var leaf_timer;                 /* 1초마다 낙엽 생성 */
+        var collision_timer;            /* 60fps로 낙엽과 충돌 체크 */
+
+        /* 나뭇잎 객체 생성 */
+        function MovingLeaf() {
+            // 시작 좌표
+            this.x = Math.round(Math.random() * 450);
+            this.y = 0;
+            // 가속도
+            this.vX = Math.round(Math.random() * 5) + 1;
+            this.vY = Math.round(Math.random() * 5) + 1;
+            
+            // leafimage = new Image;      // 낙엽 이미지 객체
+            // leafimage.src = "leaf.png"; // 낙엽 이미지 적용
+        }
+
+        /* 나뭇잎 움직이고 그리기 */
+        MovingLeaf.prototype.move = function () {
+            // 나뭇잎이 canvas의 좌, 우에 부딪히면 반대방향으로 튕김
+            if (this.x < -20 || this.x > 480) {
+                this.vX *= -1;
+            }
+            // 가속도 + 좌표
+            this.x += this.vX;
+            this.y += this.vY;
+            // 새로운 좌표에 그리기
+            context.drawImage(leafimage, this.x, this.y);
+        }
+
+        /* 낙엽 움직이기 */
+        function draw_leaf_andMove() {
+            for (var i in Leafs) {
+                Leafs[i].move();
+            }
+        }
+
+        /* 시간이 지나면 새로운 나뭇잎 추가 */
+        /* 5초마다 1개씩 더 많이 생성 */
+        function new_leaf() {
+            for (var i = 0; i < (leafcount / 7); i++)
+                Leafs.push(new MovingLeaf());
+        }
+
+        /* 배경을 화면에 그린다. */
+        function drawBackground() {
+            context.drawImage(image, 0, 0);
+        }
+
+        /* 다람쥐 플레이어 그리기 */
+        function drawPlayer() {
+            context.drawImage(player, player_x, player_y);
+        }
+
+        /* 전체 화면을 그리는 함수 */
+        function draw() {
+            context.clearRect(0, 0, 500, 500);	/* 화면을 지운다. */
+            drawBackground();       // 바닥 그리기
+            drawPlayer();           // 플레이어 다람쥐 그리기
+            draw_leaf_andMove();    // 낙엽 그리기
+        }
+
+        /* 초기화를 담당하는 함수 */
+        function init() {
+            // 플레이어 초기 위치
+            player_x = 250;
+            player_y = 430;
+            // 낙엽 초기 개수
+            leafcount = 1;
+            // 진행 시간 초기화
+            time = 0;
+            // 낙엽 배열 초기화
+            Leafs = [];
+            context = document.getElementById('canvas').getContext('2d');
+            document.getElementById("time").innerHTML = "시간 = 0";
+            draw();
+        }
+
+        /* 사용자가 발사 버튼을 누르면 호출된다. */
+        function start() {
+	    $("#button").hide();
+            init();                             // 초기화
+            context.clearRect(0, 0, 500, 500);	/* 화면을 지운다. */
+            new_leaf();                         // 낙엽 생성
+            draw_timer = setInterval(draw, 1000 / 60);                  // 60fps로 전체 화면 그리기
+            leaf_timer = setInterval(flow_time_newLeaf, 1000);          // 게임 시간이 1초씩 증가하고, 1초마다 새로운 낙엽을 생성
+            collision_timer = setInterval(check_collision, 1000/60);    // 60fps로 낙엽과 다람쥐의 충돌을 체크
+            draw();
+            return false
+        }
+        /* 충돌 검사 */
+        function check_collision() {
+            for (var i in Leafs) {
+                // 낙엽의 y 좌표가 430 ~ 440 이면서, 낙엽의 중앙 좌표가 플레이어 x 좌표 사이라면 충돌
+                // 낙엽의 가로길이 : 50px, 플레이어의 가로길이 : 30px
+                if (Leafs[i].y >= 430 && Leafs[i].y <= 440 &&
+                    Leafs[i].x + 25 >= player_x &&
+                    Leafs[i].x + 25 <= player_x + 30)
+                {
+                    // 타이머 멈추기
+                    clearInterval(draw_timer);
+                    clearInterval(leaf_timer);
+                    clearInterval(collision_timer);
+                    // 점수 갱신
+                    document.getElementById("score").innerHTML = "점수 = " + time;
+                    // 알림
+                    alert("으아아앙!");
+		    $("#button").show();
+                    return false;
+                }
+                // 낙옆이 바닥에 떨어지면 삭제하기
+                if ((Leafs[i].y >= 450))
+                    Leafs.splice(i, 1);
+            }
+        }
+        /* 1초마다 새로운 낙옆 생성 */
+        function flow_time_newLeaf() {
+            new_leaf();
+            leafcount++;
+            time++;
+            document.getElementById("time").innerHTML = "시간 = " + time;
+        }
+
+        /* 마우스 따라 움직이기 */
+        $(document).ready(function () {
+            $('canvas').mousemove(function (event) {
+                var position = $(this).offset();
+                var x = event.pageX - position.left;
+            
+                // 마우스 포인터의 중앙에 이미지를 위치시킴
+                // 플레이어 이미지 가로 길이 : 30px
+                player_x = x - 15;
+            });
+        });
+
+    </script>
+</head>
+
+<body onload="init();">
+    <canvas id="canvas" width="500" height="500"></canvas>
+    <div id="control">
+        <div id="score">점수 = 0</div>
+        <div id="time">시간 = 0</div>
+        <button id="button" onclick="start()">시작</button>
+    </div>
+</body>
+</html>
